@@ -35,6 +35,9 @@
 //
 // Вычисление определенного интеграла
 //
+
+using System.Threading;
+
 class DefiniteIntegral
 {
     //
@@ -43,10 +46,41 @@ class DefiniteIntegral
     // step - размер одного шага разбиения
     // threadsNumber - число потоков, которые используются для вычислений
     //
-    public static double Solve(double a, double b, Func<double, double> function, double step, int threadsnumber)
+    public static double Solve(double a, double b, Func<double, double> function, double step, int threadsNumber)
     {
-        // отсюда надо начинать реализацию задачи
-        return 0.0;
+        Barrier barrier;
+        
+        Thread[] threads = new Thread[threadsNumber];
+
+        barrier = new Barrier(threadsNumber + 1);
+        double asum = 0;
+        int steps = (int) ((b-a) / step);
+        int stepsPerThread = steps / threadsNumber;
+
+        for (int i = 0; i < threadsNumber; i++)
+        {
+            int whatT = i;
+            threads[i] = new Thread(() =>
+            {
+                double tsum = 0.0;
+                double x = a + whatT * stepsPerThread * step;
+
+                for (int j = 0; j < stepsPerThread; j++)
+                {
+                    double f1 = function(x);
+                    double f2 = function(x + step);
+                    tsum += (f1 + f2) * step / 2.0;
+                    x += step;
+                }
+                asum += tsum;
+
+                barrier.SignalAndWait();
+            });
+
+            threads[i].Start();
+        }
+        barrier.SignalAndWait();
+        return asum;
     }
 }
 
